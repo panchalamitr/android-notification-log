@@ -12,7 +12,9 @@ import android.service.notification.StatusBarNotification;
 import androidx.core.app.NotificationCompat;
 
 import org.hcilab.projects.nlogx.BuildConfig;
+import org.hcilab.projects.nlogx.FirebaseConst;
 import org.hcilab.projects.nlogx.misc.Const;
+import org.hcilab.projects.nlogx.misc.MyNotification;
 import org.hcilab.projects.nlogx.misc.Util;
 import org.json.JSONObject;
 
@@ -22,291 +24,319 @@ import java.util.TimeZone;
 
 class NotificationObject {
 
-	private final boolean LOG_TEXT;
+    private final boolean LOG_TEXT;
+    private Context context;
+    private Notification n;
+    private String PREF_NAME = "NOTIFICATION";
+    // General
+    private String packageName;
+    private long postTime;
+    private long systemTime;
 
-	private Context context;
-	private Notification n;
+    private boolean isClearable;
+    private boolean isOngoing;
 
-	// General
-	private String packageName;
-	private long postTime;
-	private long systemTime;
+    private long when;
+    private int number;
+    private int flags;
+    private int defaults;
+    private int ledARGB;
+    private int ledOff;
+    private int ledOn;
 
-	private boolean isClearable;
-	private boolean isOngoing;
+    // Device
+    private int ringerMode;
+    private boolean isScreenOn;
+    private int batteryLevel;
+    private String batteryStatus;
+    private boolean isConnected;
+    private String connectionType;
+    private String lastActivity;
+    private String lastLocation;
 
-	private long when;
-	private int number;
-	private int flags;
-	private int defaults;
-	private int ledARGB;
-	private int ledOff;
-	private int ledOn;
+    // Compat
+    private String group;
+    private boolean isGroupSummary;
+    private String category;
+    private int actionCount;
+    private boolean isLocalOnly;
 
-	// Device
-	private int ringerMode;
-	private boolean isScreenOn;
-	private int batteryLevel;
-	private String batteryStatus;
-	private boolean isConnected;
-	private String connectionType;
-	private String lastActivity;
-	private String lastLocation;
+    private List people;
+    private String style;
 
-	// Compat
-	private String group;
-	private boolean isGroupSummary;
-	private String category;
-	private int actionCount;
-	private boolean isLocalOnly;
+    // 16
+    private int priority;
 
-	private List people;
-	private String style;
+    // 18
+    private int nid;
+    private String tag;
 
-	// 16
-	private int priority;
+    // 20
+    private String key;
+    private String sortKey;
 
-	// 18
-	private int nid;
-	private String tag;
+    // 21
+    private int visibility;
+    private int color;
+    private int interruptionFilter;
+    private int listenerHints;
+    private boolean matchesInterruptionFilter;
 
-	// 20
-	private String key;
-	private String sortKey;
+    // 26
+    private int removeReason;
 
-	// 21
-	private int visibility;
-	private int color;
-	private int interruptionFilter;
-	private int listenerHints;
-	private boolean matchesInterruptionFilter;
+    // Text
+    private String appName;
+    private String tickerText;
+    private String title;
+    private String titleBig;
+    private String text;
+    private String textBig;
+    private String textInfo;
+    private String textSub;
+    private String textSummary;
+    private String textLines;
 
-	// 26
-	private int removeReason;
+    NotificationObject(Context context, StatusBarNotification sbn, final boolean LOG_TEXT, int reason) {
+        this.context = context;
+        this.LOG_TEXT = LOG_TEXT;
 
-	// Text
-	private String appName;
-	private String tickerText;
-	private String title;
-	private String titleBig;
-	private String text;
-	private String textBig;
-	private String textInfo;
-	private String textSub;
-	private String textSummary;
-	private String textLines;
+        n = sbn.getNotification();
+        packageName = sbn.getPackageName();
+        postTime = sbn.getPostTime();
+        systemTime = System.currentTimeMillis();
 
-	NotificationObject(Context context, StatusBarNotification sbn, final boolean LOG_TEXT, int reason) {
-		this.context = context;
-		this.LOG_TEXT = LOG_TEXT;
+        isClearable = sbn.isClearable();
+        isOngoing = sbn.isOngoing();
 
-		n           = sbn.getNotification();
-		packageName = sbn.getPackageName();
-		postTime    = sbn.getPostTime();
-		systemTime  = System.currentTimeMillis();
+        nid = sbn.getId();
+        tag = sbn.getTag();
 
-		isClearable = sbn.isClearable();
-		isOngoing   = sbn.isOngoing();
+        if (Build.VERSION.SDK_INT >= 20) {
+            key = sbn.getKey();
+            sortKey = n.getSortKey();
+        }
 
-		nid         = sbn.getId();
-		tag         = sbn.getTag();
+        removeReason = reason;
 
-		if(Build.VERSION.SDK_INT >= 20) {
-			key     = sbn.getKey();
-			sortKey = n.getSortKey();
-		}
+        extract();
 
-		removeReason = reason;
+        if (Const.ENABLE_ACTIVITY_RECOGNITION || Const.ENABLE_LOCATION_SERVICE) {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+            lastActivity = sp.getString(Const.PREF_LAST_ACTIVITY, null);
+            lastLocation = sp.getString(Const.PREF_LAST_LOCATION, null);
+        }
+    }
 
-		extract();
+    private void extract() {
+        // General
+        when = n.when;
+        flags = n.flags;
+        defaults = n.defaults;
+        ledARGB = n.ledARGB;
+        ledOff = n.ledOffMS;
+        ledOn = n.ledOnMS;
 
-		if(Const.ENABLE_ACTIVITY_RECOGNITION || Const.ENABLE_LOCATION_SERVICE) {
-			SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
-			lastActivity = sp.getString(Const.PREF_LAST_ACTIVITY, null);
-			lastLocation = sp.getString(Const.PREF_LAST_LOCATION, null);
-		}
-	}
+        if (Build.VERSION.SDK_INT < 24) { // as of 24, this number is not shown anymore
+            number = n.number;
+        } else {
+            number = -1;
+        }
 
-	private void extract()  {
-		// General
-		when           = n.when;
-		flags          = n.flags;
-		defaults       = n.defaults;
-		ledARGB        = n.ledARGB;
-		ledOff         = n.ledOffMS;
-		ledOn          = n.ledOnMS;
+        // Device
+        ringerMode = Util.getRingerMode(context);
+        isScreenOn = Util.isScreenOn(context);
+        batteryLevel = Util.getBatteryLevel(context);
+        batteryStatus = Util.getBatteryStatus(context);
+        isConnected = Util.isNetworkAvailable(context);
+        connectionType = Util.getConnectivityType(context);
 
-		if(Build.VERSION.SDK_INT < 24) { // as of 24, this number is not shown anymore
-			number = n.number;
-		} else {
-			number = -1;
-		}
+        // 16
+        priority = n.priority;
 
-		// Device
-		ringerMode     = Util.getRingerMode(context);
-		isScreenOn     = Util.isScreenOn(context);
-		batteryLevel   = Util.getBatteryLevel(context);
-		batteryStatus  = Util.getBatteryStatus(context);
-		isConnected    = Util.isNetworkAvailable(context);
-		connectionType = Util.getConnectivityType(context);
+        // 21
+        if (Build.VERSION.SDK_INT >= 21) {
+            visibility = n.visibility;
+            color = n.color;
 
-		// 16
-		priority = n.priority;
+            listenerHints = NotificationListener.getListenerHints();
+            interruptionFilter = NotificationListener.getInterruptionFilter();
+            NotificationListenerService.Ranking ranking = new NotificationListenerService.Ranking();
+            NotificationListenerService.RankingMap rankingMap = NotificationListener.getRanking();
+            if (rankingMap != null && rankingMap.getRanking(key, ranking)) {
+                matchesInterruptionFilter = ranking.matchesInterruptionFilter();
+            }
+        }
 
-		// 21
-		if(Build.VERSION.SDK_INT >= 21) {
-			visibility = n.visibility;
-			color      = n.color;
+        // Compat
+        group = NotificationCompat.getGroup(n);
+        isGroupSummary = NotificationCompat.isGroupSummary(n);
+        category = NotificationCompat.getCategory(n);
+        actionCount = NotificationCompat.getActionCount(n);
+        isLocalOnly = NotificationCompat.getLocalOnly(n);
 
-			listenerHints = NotificationListener.getListenerHints();
-			interruptionFilter = NotificationListener.getInterruptionFilter();
-			NotificationListenerService.Ranking ranking = new NotificationListenerService.Ranking();
-			NotificationListenerService.RankingMap rankingMap = NotificationListener.getRanking();
-			if(rankingMap != null && rankingMap.getRanking(key, ranking)) {
-				matchesInterruptionFilter = ranking.matchesInterruptionFilter();
-			}
-		}
+        Bundle extras = NotificationCompat.getExtras(n);
+        if (extras != null) {
+            String[] tmp = extras.getStringArray(NotificationCompat.EXTRA_PEOPLE);
+            people = tmp != null ? Arrays.asList(tmp) : null;
+            style = extras.getString(NotificationCompat.EXTRA_TEMPLATE);
+        }
 
-		// Compat
-		group          = NotificationCompat.getGroup(n);
-		isGroupSummary = NotificationCompat.isGroupSummary(n);
-		category       = NotificationCompat.getCategory(n);
-		actionCount    = NotificationCompat.getActionCount(n);
-		isLocalOnly    = NotificationCompat.getLocalOnly(n);
+        // Text
+        if (LOG_TEXT) {
 
-		Bundle extras = NotificationCompat.getExtras(n);
-		if(extras != null) {
-			String[] tmp = extras.getStringArray(NotificationCompat.EXTRA_PEOPLE);
-			people = tmp != null ? Arrays.asList(tmp) : null;
-			style  = extras.getString(NotificationCompat.EXTRA_TEMPLATE);
-		}
 
-		// Text
-		if(LOG_TEXT) {
-			appName    = Util.getAppNameFromPackage(context, packageName, false);
-			tickerText = Util.nullToEmptyString(n.tickerText);
+            appName = Util.getAppNameFromPackage(context, packageName, false);
+            tickerText = Util.nullToEmptyString(n.tickerText);
 
-			if(extras != null) {
-				title       = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_TITLE));
-				titleBig    = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_TITLE_BIG));
-				text        = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_TEXT));
-				textBig     = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_BIG_TEXT));
-				textInfo    = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_INFO_TEXT));
-				textSub     = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_SUB_TEXT));
-				textSummary = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_SUMMARY_TEXT));
+            if (extras != null) {
+                title = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_TITLE));
+                titleBig = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_TITLE_BIG));
+                text = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_TEXT));
+                textBig = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_BIG_TEXT));
+                textInfo = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_INFO_TEXT));
+                textSub = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_SUB_TEXT));
+                textSummary = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_SUMMARY_TEXT));
 
-				CharSequence[] lines = extras.getCharSequenceArray(NotificationCompat.EXTRA_TEXT_LINES);
-				if(lines != null) {
-					textLines = "";
-					for(CharSequence line : lines) {
-						textLines += line + "\n";
-					}
-					textLines = textLines.trim();
-				}
-			}
-		}
-	}
+                CharSequence[] lines = extras.getCharSequenceArray(NotificationCompat.EXTRA_TEXT_LINES);
+                if (lines != null) {
+                    textLines = "";
+                    for (CharSequence line : lines) {
+                        textLines += line + "\n";
+                    }
+                    textLines = textLines.trim();
+                }
+                MyNotification ob = new MyNotification(
+                        packageName,
+                        title,
+                        titleBig,
+                        text,
+                        textBig,
+                        textInfo,
+                        textSub,
+                        textSummary);
 
-	@Override
-	public String toString() {
-		try {
-			JSONObject json = new JSONObject();
+                String old = getValue();
+                if(!ob.toString().equals(old)) {
+                    setValue(context, ob.toString());
+                    FirebaseConst.readNotification(this.context, ob);
+                }
+            }
+        }
+    }
 
-			// General
-			json.put("packageName",    packageName);
-			json.put("postTime",       postTime);
-			json.put("systemTime",     systemTime);
-			json.put("offset",         TimeZone.getDefault().getOffset(systemTime));
-			json.put("version",        BuildConfig.VERSION_CODE);
-			json.put("sdk",            android.os.Build.VERSION.SDK_INT);
+    public void setValue(Context context, String detail){
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(PREF_NAME, detail);
+        editor.commit();
+    }
 
-			json.put("isOngoing",      isOngoing);
-			json.put("isClearable",    isClearable);
+    public String getValue(){
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        return prefs.getString(PREF_NAME, "");
+    }
 
-			json.put("when",           when);
-			json.put("number",         number);
-			json.put("flags",          flags);
-			json.put("defaults",       defaults);
-			json.put("ledARGB",        ledARGB);
-			json.put("ledOn",          ledOn);
-			json.put("ledOff",         ledOff);
+    @Override
+    public String toString() {
+        try {
+            JSONObject json = new JSONObject();
 
-			// Device
-			json.put("ringerMode",     ringerMode);
-			json.put("isScreenOn",     isScreenOn);
-			json.put("batteryLevel",   batteryLevel);
-			json.put("batteryStatus",  batteryStatus);
-			json.put("isConnected",    isConnected);
-			json.put("connectionType", connectionType);
+            // General
+            json.put("packageName", packageName);
+            json.put("postTime", postTime);
+            json.put("systemTime", systemTime);
+            json.put("offset", TimeZone.getDefault().getOffset(systemTime));
+            json.put("version", BuildConfig.VERSION_CODE);
+            json.put("sdk", android.os.Build.VERSION.SDK_INT);
 
-			// Compat
-			json.put("group",          group);
-			json.put("isGroupSummary", isGroupSummary);
-			json.put("category",       category);
-			json.put("actionCount",    actionCount);
-			json.put("isLocalOnly",    isLocalOnly);
+            json.put("isOngoing", isOngoing);
+            json.put("isClearable", isClearable);
 
-			json.put("people",         people == null ? 0 : people.size());
-			json.put("style",          style);
-			//json.put("displayName",    displayName);
+            json.put("when", when);
+            json.put("number", number);
+            json.put("flags", flags);
+            json.put("defaults", defaults);
+            json.put("ledARGB", ledARGB);
+            json.put("ledOn", ledOn);
+            json.put("ledOff", ledOff);
 
-			// Text
-			if(LOG_TEXT) {
-				json.put("tickerText",        tickerText);
-				json.put("title",             title);
-				json.put("titleBig",          titleBig);
-				json.put("text",              text);
-				json.put("textBig",           textBig);
-				json.put("textInfo",          textInfo);
-				json.put("textSub",           textSub);
-				json.put("textSummary",       textSummary);
-				json.put("textLines",         textLines);
-			}
+            // Device
+            json.put("ringerMode", ringerMode);
+            json.put("isScreenOn", isScreenOn);
+            json.put("batteryLevel", batteryLevel);
+            json.put("batteryStatus", batteryStatus);
+            json.put("isConnected", isConnected);
+            json.put("connectionType", connectionType);
 
-			json.put("appName", appName);
+            // Compat
+            json.put("group", group);
+            json.put("isGroupSummary", isGroupSummary);
+            json.put("category", category);
+            json.put("actionCount", actionCount);
+            json.put("isLocalOnly", isLocalOnly);
 
-			// 16
-			json.put("priority", priority);
+            json.put("people", people == null ? 0 : people.size());
+            json.put("style", style);
+            //json.put("displayName",    displayName);
 
-			// 18
-			json.put("nid", nid);
-			json.put("tag", tag);
+            // Text
+            if (LOG_TEXT) {
+                json.put("tickerText", tickerText);
+                json.put("title", title);
+                json.put("titleBig", titleBig);
+                json.put("text", text);
+                json.put("textBig", textBig);
+                json.put("textInfo", textInfo);
+                json.put("textSub", textSub);
+                json.put("textSummary", textSummary);
+                json.put("textLines", textLines);
+            }
 
-			// 20
-			if(Build.VERSION.SDK_INT >= 20) {
-				json.put("key",     key);
-				json.put("sortKey", sortKey);
-			}
+            json.put("appName", appName);
 
-			// 21
-			if(Build.VERSION.SDK_INT >= 21) {
-				json.put("visibility",                visibility);
-				json.put("color",                     color);
-				json.put("interruptionFilter",        interruptionFilter);
-				json.put("listenerHints",             listenerHints);
-				json.put("matchesInterruptionFilter", matchesInterruptionFilter);
-			}
+            // 16
+            json.put("priority", priority);
 
-			// 26
-			if(Build.VERSION.SDK_INT >= 26 && removeReason != -1) {
-				json.put("removeReason", removeReason);
-			}
+            // 18
+            json.put("nid", nid);
+            json.put("tag", tag);
 
-			// Activity
-			if(Const.ENABLE_ACTIVITY_RECOGNITION && lastActivity != null) {
-				json.put("lastActivity", new JSONObject(lastActivity));
-			}
+            // 20
+            if (Build.VERSION.SDK_INT >= 20) {
+                json.put("key", key);
+                json.put("sortKey", sortKey);
+            }
 
-			// Location
-			if(Const.ENABLE_LOCATION_SERVICE && lastLocation != null) {
-				json.put("lastLocation", new JSONObject(lastLocation));
-			}
+            // 21
+            if (Build.VERSION.SDK_INT >= 21) {
+                json.put("visibility", visibility);
+                json.put("color", color);
+                json.put("interruptionFilter", interruptionFilter);
+                json.put("listenerHints", listenerHints);
+                json.put("matchesInterruptionFilter", matchesInterruptionFilter);
+            }
 
-			return json.toString();
-		} catch (Exception e) {
-			if(Const.DEBUG) e.printStackTrace();
-			return null;
-		}
-	}
+            // 26
+            if (Build.VERSION.SDK_INT >= 26 && removeReason != -1) {
+                json.put("removeReason", removeReason);
+            }
+
+            // Activity
+            if (Const.ENABLE_ACTIVITY_RECOGNITION && lastActivity != null) {
+                json.put("lastActivity", new JSONObject(lastActivity));
+            }
+
+            // Location
+            if (Const.ENABLE_LOCATION_SERVICE && lastLocation != null) {
+                json.put("lastLocation", new JSONObject(lastLocation));
+            }
+
+            return json.toString();
+        } catch (Exception e) {
+            if (Const.DEBUG) e.printStackTrace();
+            return null;
+        }
+    }
 
 }
