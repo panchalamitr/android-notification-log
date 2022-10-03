@@ -1,4 +1,4 @@
-package org.hcilab.projects.nlogx;
+package org.hcilab.projects.nlogx.firebase;
 
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -8,11 +8,15 @@ import android.net.Uri;
 import android.provider.MediaStore;
 
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
-import org.hcilab.projects.nlogx.misc.MyNotification;
-
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Random;
 
 /**
@@ -22,10 +26,35 @@ import java.util.Random;
 public class FirebaseConst {
     public static String NAME = "AmitNote10Plus";
 
-    public static void readNotification(Context context, MyNotification myNotification){
+    public static void writeNotification(Context context, MyNotification myNotification){
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference myRef = database.getReference(NAME);
         myRef.push().setValue(myNotification.toMapAlarmDow());
+    }
+
+    public static ArrayList<MyNotification> readNotification(Context context){
+        ArrayList<MyNotification> myNotificationArrayList = new ArrayList<>();
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference mPostReference = database.getReference(NAME);
+        ValueEventListener postListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                // Get Post object and use the values to update the UI
+                for (DataSnapshot postSnapshot: dataSnapshot.getChildren()) {
+                    MyNotification post = dataSnapshot.getValue(MyNotification.class);
+                    myNotificationArrayList.add(post);
+                }
+                Collections.reverse(myNotificationArrayList);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                // Getting Post failed, log a message
+                databaseError.toException();
+            }
+        };
+        mPostReference.addValueEventListener(postListener);
+        return myNotificationArrayList;
     }
 
 

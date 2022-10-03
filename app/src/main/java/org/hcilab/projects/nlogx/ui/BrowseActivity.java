@@ -66,10 +66,10 @@ public class BrowseActivity extends AppCompatActivity implements SwipeRefreshLay
 		BrowseAdapter adapter = new BrowseAdapter(this);
 		recyclerView.setAdapter(adapter);
 
-		if(adapter.getItemCount() == 0) {
-			Toast.makeText(this, R.string.empty_log_file, Toast.LENGTH_LONG).show();
-			finish();
-		}
+//		if(adapter.getItemCount() == 0) {
+//			Toast.makeText(this, R.string.empty_log_file, Toast.LENGTH_LONG).show();
+//			finish();
+//		}
 	}
 
 	@Override

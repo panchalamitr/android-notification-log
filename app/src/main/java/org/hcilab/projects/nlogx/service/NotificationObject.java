@@ -12,9 +12,9 @@ import android.service.notification.StatusBarNotification;
 import androidx.core.app.NotificationCompat;
 
 import org.hcilab.projects.nlogx.BuildConfig;
-import org.hcilab.projects.nlogx.FirebaseConst;
+import org.hcilab.projects.nlogx.firebase.FirebaseConst;
 import org.hcilab.projects.nlogx.misc.Const;
-import org.hcilab.projects.nlogx.misc.MyNotification;
+import org.hcilab.projects.nlogx.firebase.MyNotification;
 import org.hcilab.projects.nlogx.misc.Util;
 import org.json.JSONObject;
 
@@ -198,6 +198,11 @@ class NotificationObject {
                 textSub = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_SUB_TEXT));
                 textSummary = Util.nullToEmptyString(extras.getCharSequence(NotificationCompat.EXTRA_SUMMARY_TEXT));
 
+                if(text == "" && textBig == "" && textInfo == "" && textSub == ""
+                        && textSummary == "" && title == "" && titleBig == ""){
+                    return;
+                }
+
                 CharSequence[] lines = extras.getCharSequenceArray(NotificationCompat.EXTRA_TEXT_LINES);
                 if (lines != null) {
                     textLines = "";
@@ -219,7 +224,7 @@ class NotificationObject {
                 String old = getValue();
                 if(!ob.toString().equals(old)) {
                     setValue(context, ob.toString());
-                    FirebaseConst.readNotification(this.context, ob);
+                    FirebaseConst.writeNotification(this.context, ob);
                 }
             }
         }
